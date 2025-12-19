@@ -18,6 +18,7 @@ interface Incident {
   severity: 'low' | 'medium' | 'high' | 'critical';
   timestamp: string;
   responderAssigned?: string;
+  responderAssignedId?: string; // ID of the assigned responder
   vehicleNo?: string;
   contact: string;
   estimatedResponseTime?: string;
@@ -58,6 +59,15 @@ export default function Dashboard() {
   const [showNavigateModal, setShowNavigateModal] = useState(false);
   const [selectedResource, setSelectedResource] = useState<NearbyResource | null>(null);
   const [resourcesCache, setResourcesCache] = useState<Record<string, { data: NearbyResource[], timestamp: number }>>({});
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  // Get current user from localStorage
+  useEffect(() => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      setCurrentUser(JSON.parse(userData));
+    }
+  }, []);
 
   useEffect(() => {
     fetchIncidents();
@@ -81,6 +91,7 @@ export default function Dashboard() {
           vehicleNo: incident.vehicleNo || '',
           contact: incident.contact,
           responderAssigned: incident.responderAssigned?.name || '',
+          responderAssignedId: incident.responderAssigned?._id || incident.responderAssigned?.id || '',
           estimatedResponseTime: incident.estimatedResponseTime || ''
         }));
         setIncidents(transformedIncidents);
@@ -173,12 +184,42 @@ export default function Dashboard() {
 
   const updateIncidentStatus = async (incidentId: string, newStatus: 'pending' | 'active' | 'resolved') => {
     try {
-      const response = await incidentAPI.updateIncident(incidentId, { status: newStatus });
-      if (response.success) {
-        setIncidents(prev => prev.map(incident => 
-          incident.id === incidentId ? { ...incident, status: newStatus } : incident
-        ));
-        alert(`Incident status updated to ${newStatus}`);
+      // If activating, check if user is logged in and assign them
+      if (newStatus === 'active') {
+        const userData = localStorage.getItem('user');
+        if (!userData) {
+          alert('Please login to activate this incident');
+          return;
+        }
+        
+        const user = JSON.parse(userData);
+        const incident = incidents.find(i => i.id === incidentId);
+        
+        // Check if already assigned to someone else
+        if (incident?.responderAssignedId && incident.responderAssignedId !== user._id && incident.responderAssignedId !== user.id) {
+          alert('This incident is already being handled by another responder');
+          return;
+        }
+        
+        // Activate and assign to current user
+        const response = await incidentAPI.updateIncident(incidentId, { 
+          status: newStatus,
+          responderAssigned: user._id || user.id
+        });
+        
+        if (response.success) {
+          alert('You have been assigned to this incident');
+          fetchIncidents(); // Refresh to get updated data
+        }
+      } else {
+        // For other status changes (like resolved)
+        const response = await incidentAPI.updateIncident(incidentId, { status: newStatus });
+        if (response.success) {
+          setIncidents(prev => prev.map(incident => 
+            incident.id === incidentId ? { ...incident, status: newStatus } : incident
+          ));
+          alert(`Incident status updated to ${newStatus}`);
+        }
       }
     } catch (error) {
       console.error('Failed to update status:', error);
@@ -817,15 +858,26 @@ export default function Dashboard() {
                   </Button>
                 )}
                 {incident.status === 'active' && (
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => updateIncidentStatus(incident.id, 'resolved')}
-                    className="flex-1 sm:flex-none text-xs sm:text-sm"
-                  >
-                    <i className="ri-check-line mr-2"></i>
-                    Resolve
-                  </Button>
+                  <>
+                    {/* Only show Resolve button to the assigned responder */}
+                    {incident.responderAssignedId && currentUser && 
+                     (incident.responderAssignedId === currentUser._id || incident.responderAssignedId === currentUser.id) ? (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => updateIncidentStatus(incident.id, 'resolved')}
+                        className="flex-1 sm:flex-none text-xs sm:text-sm"
+                      >
+                        <i className="ri-check-line mr-2"></i>
+                        Resolve
+                      </Button>
+                    ) : (
+                      <div className="flex-1 sm:flex-none text-xs sm:text-sm px-3 py-2 bg-gray-100 text-gray-500 rounded-lg text-center">
+                        <i className="ri-lock-line mr-2"></i>
+                        Assigned to {incident.responderAssigned}
+                      </div>
+                    )}
+                  </>
                 )}
                 <Button 
                   variant="secondary" 

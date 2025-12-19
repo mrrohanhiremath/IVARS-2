@@ -1,4 +1,5 @@
 import axios from 'axios';
+import mongoose from 'mongoose';
 
 // Keep server and database warm with periodic pings
 export const startKeepAlive = () => {
@@ -21,10 +22,25 @@ export const startKeepAlive = () => {
 // Warm up database connections on startup
 export const warmupDatabase = async () => {
   try {
-    const mongoose = await import('mongoose');
+    // Wait for connection to be ready
+    if (mongoose.connection.readyState !== 1) {
+      console.log('⏳ Waiting for database connection...');
+      await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error('Connection timeout')), 10000);
+        mongoose.connection.once('open', () => {
+          clearTimeout(timeout);
+          resolve();
+        });
+      });
+    }
+    
     // Execute a simple query to warm up the connection
-    await mongoose.connection.db.admin().ping();
-    console.log('🔥 Database warmed up successfully');
+    if (mongoose.connection.db) {
+      await mongoose.connection.db.admin().ping();
+      console.log('🔥 Database warmed up successfully');
+    } else {
+      console.log('⚠️ Database connection not fully established');
+    }
   } catch (error) {
     console.error('⚠️ Database warmup failed:', error.message);
   }

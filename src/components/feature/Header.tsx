@@ -11,7 +11,7 @@ export default function Header() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [responderStatus, setResponderStatus] = useState<'available' | 'busy' | 'offline'>('available');
-  const [responderType, setResponderType] = useState<'police' | 'ambulance' | 'fire'>('ambulance');
+  const [responderType, setResponderType] = useState<'police' | 'ambulance' | 'fire' | null>(null);
   const location = useLocation();
 
   useEffect(() => {
@@ -20,7 +20,7 @@ export default function Header() {
     if (userData) {
       const parsedUser = JSON.parse(userData);
       setUser(parsedUser);
-      if (parsedUser.role === 'responder') {
+      if (parsedUser.role === 'responder' || parsedUser.role === 'admin') {
         if (parsedUser.responderStatus) {
           setResponderStatus(parsedUser.responderStatus);
         }
@@ -221,23 +221,26 @@ export default function Header() {
                             <div className="text-xs font-semibold text-blue-700 uppercase tracking-wide">
                               🚨 Responder Info
                             </div>
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              responderType === 'police' ? 'bg-blue-100 text-blue-700' :
-                              responderType === 'ambulance' ? 'bg-red-100 text-red-700' :
-                              'bg-orange-100 text-orange-700'
-                            }`}>
-                              {responderType === 'police' ? '🚔 Police' :
-                               responderType === 'ambulance' ? '🚑 Ambulance' : '🚒 Fire'}
-                            </span>
+                            {responderType && (
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                responderType === 'police' ? 'bg-blue-100 text-blue-700' :
+                                responderType === 'fire' ? 'bg-orange-100 text-orange-700' :
+                                'bg-red-100 text-red-700'
+                              }`}>
+                                {responderType === 'police' ? '🚔 Police' :
+                                 responderType === 'fire' ? '🚒 Fire' : '🚑 Ambulance'}
+                              </span>
+                            )}
                           </div>
                           <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1.5">Change Status:</label>
+                            <label className="block text-xs font-medium text-gray-700 mb-1.5">Status:</label>
                             <select
                               value={responderStatus}
                               onChange={(e) => {
                                 handleStatusChange(e.target.value as 'available' | 'busy' | 'offline');
+                                setIsMenuOpen(false); // Close menu after status change
                               }}
-                              className={`px-2 py-2 text-xs font-medium rounded-lg border cursor-pointer ${
+                              className={`px-3 py-2 text-sm font-medium rounded-lg border cursor-pointer transition-colors ${
                                 responderStatus === 'available' ? 'bg-green-50 text-green-700 border-green-300' :
                                 responderStatus === 'busy' ? 'bg-red-50 text-red-700 border-red-300' :
                                 'bg-gray-50 text-gray-700 border-gray-300'

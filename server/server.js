@@ -8,18 +8,28 @@ import { startKeepAlive, warmupDatabase } from './utils/keepAlive.js';
 // Load environment variables
 dotenv.config();
 
-// Connect to MongoDB
-connectDB().then(() => {
-  // Warm up database after connection
-  warmupDatabase();
-  
-  // Start keep-alive service in production
-  if (process.env.NODE_ENV === 'production') {
-    startKeepAlive();
-  }
-});
-
+// Initialize app first
 const app = express();
+
+// Connect to MongoDB and start services
+connectDB()
+  .then(async () => {
+    console.log('✅ MongoDB connected successfully');
+    
+    // Wait a bit for connection to fully establish
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Warm up database after connection
+    await warmupDatabase();
+    
+    // Start keep-alive service in production
+    if (process.env.NODE_ENV === 'production') {
+      startKeepAlive();
+    }
+  })
+  .catch(err => {
+    console.error('❌ MongoDB connection error:', err);
+  });
 
 // Middleware - CORS with proper configuration
 const corsOptions = {
