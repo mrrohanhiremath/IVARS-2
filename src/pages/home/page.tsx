@@ -45,7 +45,7 @@ export default function Home() {
       
       // Calculate average response time from incidents with ETA
       const incidentsWithETA = incidents.filter((i: any) => i.estimatedResponseTime);
-      let avgMinutes = 4.2; // Default
+      let avgMinutes = '4.2'; // Default
       if (incidentsWithETA.length > 0) {
         const totalMinutes = incidentsWithETA.reduce((sum: number, i: any) => {
           const eta = i.estimatedResponseTime;
