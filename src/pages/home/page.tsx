@@ -21,13 +21,21 @@ export default function Home() {
 
   const fetchRealStats = async () => {
     try {
-      // Fetch incidents
+      // Fetch incidents - public endpoint
       const incidentsResponse = await incidentAPI.getIncidents();
       const incidents = incidentsResponse.data || [];
       
-      // Fetch responders
-      const respondersResponse = await userAPI.getResponders();
-      const responders = respondersResponse.data || [];
+      // Try to fetch responders, but don't fail if unauthorized
+      let responders = [];
+      try {
+        const respondersResponse = await userAPI.getResponders();
+        responders = respondersResponse.data || [];
+      } catch (responderError: any) {
+        // Ignore 401 errors for responders endpoint - user not logged in
+        if (responderError?.response?.status !== 401) {
+          console.error('Failed to fetch responders:', responderError);
+        }
+      }
 
       // Calculate stats
       const totalReports = incidents.length;
