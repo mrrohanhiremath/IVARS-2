@@ -47,6 +47,7 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<'overview' | 'incidents' | 'responders' | 'analytics'>('overview');
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [responders, setResponders] = useState<Responder[]>([]);
+  const [selectedIncident, setSelectedIncident] = useState<any>(null);
   const [isIncidentModalOpen, setIsIncidentModalOpen] = useState(false);
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
   const [mapIncident, setMapIncident] = useState<any>(null);
@@ -183,12 +184,6 @@ export default function Dashboard() {
       console.error('Failed to update status:', error);
       alert('Failed to update incident status');
     }
-  };
-
-  const assignResponder = (incidentId: string, responderName: string) => {
-    setIncidents(prev => prev.map(incident => 
-      incident.id === incidentId ? { ...incident, responderAssigned: responderName, status: 'active' } : incident
-    ));
   };
 
   const formatTime = (timestamp: string) => {
