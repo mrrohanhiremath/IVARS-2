@@ -9,5 +9,10 @@ export const userAPI = {
   updateResponderStatus: async (status: 'available' | 'busy' | 'offline') => {
     const response = await api.put('/users/profile', { responderStatus: status });
     return response.data;
+  },
+
+  updateLocation: async (location: string) => {
+    const response = await api.put('/users/profile', { location });
+    return response.data;
   }
 };

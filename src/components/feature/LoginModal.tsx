@@ -1,9 +1,9 @@
-
 import { useState } from 'react';
 import Button from '../base/Button';
 import Input from '../base/Input';
 import Card from '../base/Card';
 import { authAPI } from '../../services/auth.service';
+import { userAPI } from '../../services/user.service';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -29,6 +29,35 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
     }));
   };
 
+  const getLocationAndUpdate = async () => {
+    return new Promise((resolve) => {
+      if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const { latitude, longitude } = position.coords;
+            const locationString = `${latitude},${longitude}`;
+            
+            try {
+              await userAPI.updateLocation(locationString);
+              console.log('Location updated:', locationString);
+            } catch (error) {
+              console.error('Failed to update location:', error);
+            }
+            resolve(locationString);
+          },
+          (error) => {
+            console.error('Geolocation error:', error);
+            resolve(null);
+          },
+          { timeout: 10000, enableHighAccuracy: true }
+        );
+      } else {
+        console.log('Geolocation not supported');
+        resolve(null);
+      }
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -42,6 +71,14 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
         });
         
         if (result.success) {
+          // If user is a responder, get and update location
+          const userData = localStorage.getItem('user');
+          if (userData) {
+            const user = JSON.parse(userData);
+            if (user.role === 'responder') {
+              await getLocationAndUpdate();
+            }
+          }
           alert('Login successful! Welcome to EmergencyAlert.');
         }
       } else {
