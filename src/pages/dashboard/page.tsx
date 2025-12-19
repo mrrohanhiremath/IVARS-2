@@ -633,7 +633,7 @@ export default function Dashboard() {
             </div>
             <div className="ml-3">
               <p className="text-xs sm:text-sm font-medium text-gray-600">Active Incidents</p>
-              <p className="text-xl sm:text-2xl font-bold text-gray-900">12</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900">{stats.activeIncidents}</p>
             </div>
           </div>
         </Card>
@@ -644,7 +644,7 @@ export default function Dashboard() {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Available Responders</p>
-              <p className="text-2xl font-bold text-gray-900">28</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.availableResponders}</p>
             </div>
           </div>
         </Card>
@@ -655,7 +655,7 @@ export default function Dashboard() {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Avg Response Time</p>
-              <p className="text-2xl font-bold text-gray-900">4.2m</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.averageResponseTime}</p>
             </div>
           </div>
         </Card>
@@ -666,7 +666,7 @@ export default function Dashboard() {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Resolved Today</p>
-              <p className="text-2xl font-bold text-gray-900">45</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.resolvedToday}</p>
             </div>
           </div>
         </Card>
