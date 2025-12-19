@@ -5,7 +5,6 @@ import Header from '../../components/feature/Header';
 import Button from '../../components/base/Button';
 import Card from '../../components/base/Card';
 import { incidentAPI } from '../../services/incident.service';
-import { userAPI } from '../../services/user.service';
 
 export default function Home() {
   const [stats, setStats] = useState({
@@ -24,18 +23,6 @@ export default function Home() {
       // Fetch incidents - public endpoint
       const incidentsResponse = await incidentAPI.getIncidents();
       const incidents = incidentsResponse.data || [];
-      
-      // Try to fetch responders, but don't fail if unauthorized
-      let responders = [];
-      try {
-        const respondersResponse = await userAPI.getResponders();
-        responders = respondersResponse.data || [];
-      } catch (responderError: any) {
-        // Ignore 401 errors for responders endpoint - user not logged in
-        if (responderError?.response?.status !== 401) {
-          console.error('Failed to fetch responders:', responderError);
-        }
-      }
 
       // Calculate stats
       const totalReports = incidents.length;

@@ -47,7 +47,7 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<'overview' | 'incidents' | 'responders' | 'analytics'>('overview');
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [responders, setResponders] = useState<Responder[]>([]);
-  const [selectedIncident, setSelectedIncident] = useState<any>(null);
+  const [selectedIncident, _setSelectedIncident] = useState<any>(null);
   const [isIncidentModalOpen, setIsIncidentModalOpen] = useState(false);
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
   const [mapIncident, setMapIncident] = useState<any>(null);
