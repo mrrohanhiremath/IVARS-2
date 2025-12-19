@@ -299,6 +299,28 @@ export const updateIncident = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Incident not found' });
     }
 
+    // Security check: Only the assigned responder can resolve/close the incident
+    if (status === 'resolved') {
+      // Check if incident has an assigned responder
+      if (!incident.responderAssigned) {
+        return res.status(403).json({ 
+          success: false, 
+          message: 'Cannot resolve an unassigned incident' 
+        });
+      }
+      
+      // Check if the requesting user is the assigned responder
+      const assignedResponderId = incident.responderAssigned.toString();
+      const currentUserId = req.user._id.toString();
+      
+      if (assignedResponderId !== currentUserId && req.user.role !== 'admin') {
+        return res.status(403).json({ 
+          success: false, 
+          message: 'Only the assigned responder can resolve this incident' 
+        });
+      }
+    }
+
     // Update fields
     if (status) incident.status = status;
     if (responderAssigned) incident.responderAssigned = responderAssigned;
