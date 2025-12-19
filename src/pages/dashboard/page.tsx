@@ -39,13 +39,14 @@ interface NearbyResource {
   address: string;
   place_id: string;
   location: { lat: number; lng: number };
+  is_open?: boolean;
+  rating?: number;
 }
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<'overview' | 'incidents' | 'responders' | 'analytics'>('overview');
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [responders, setResponders] = useState<Responder[]>([]);
-  const [selectedIncident, setSelectedIncident] = useState<any>(null);
   const [isIncidentModalOpen, setIsIncidentModalOpen] = useState(false);
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
   const [mapIncident, setMapIncident] = useState<any>(null);
@@ -357,37 +358,43 @@ export default function Dashboard() {
     // Fetch hospitals
     const hospitals = await searchNearbyPlaces(lat, lng, 'hospital', radius);
     console.log('Found hospitals:', hospitals.length);
-    resources.push(...hospitals.map(place => ({
+    resources.push(...hospitals.map((place: any) => ({
       name: place.name,
       type: 'hospital' as const,
       distance: place.distance,
       address: place.vicinity || place.formatted_address || '',
       place_id: place.place_id,
-      location: place.geometry.location
+      location: place.geometry.location,
+      is_open: place.is_open,
+      rating: place.rating
     })));
     
     // Fetch police stations
     const policeStations = await searchNearbyPlaces(lat, lng, 'police', radius);
     console.log('Found police stations:', policeStations.length);
-    resources.push(...policeStations.map(place => ({
+    resources.push(...policeStations.map((place: any) => ({
       name: place.name,
       type: 'police' as const,
       distance: place.distance,
       address: place.vicinity || place.formatted_address || '',
       place_id: place.place_id,
-      location: place.geometry.location
+      location: place.geometry.location,
+      is_open: place.is_open,
+      rating: place.rating
     })));
     
     // Fetch fire stations
     const fireStations = await searchNearbyPlaces(lat, lng, 'fire_station', radius);
     console.log('Found fire stations:', fireStations.length);
-    resources.push(...fireStations.map(place => ({
+    resources.push(...fireStations.map((place: any) => ({
       name: place.name,
       type: 'fire' as const,
       distance: place.distance,
       address: place.vicinity || place.formatted_address || '',
       place_id: place.place_id,
-      location: place.geometry.location
+      location: place.geometry.location,
+      is_open: place.is_open,
+      rating: place.rating
     })));
     
     return resources;
