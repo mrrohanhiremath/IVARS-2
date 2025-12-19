@@ -28,9 +28,16 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/';
+      // Only clear auth and redirect if user was previously authenticated
+      const token = localStorage.getItem('token');
+      if (token) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        // Only redirect if not already on home page
+        if (window.location.pathname !== '/') {
+          window.location.href = '/';
+        }
+      }
     }
     return Promise.reject(error);
   }
