@@ -1,13 +1,23 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
+import compression from 'compression';
 import connectDB from './config/db.js';
+import { startKeepAlive, warmupDatabase } from './utils/keepAlive.js';
 
 // Load environment variables
 dotenv.config();
 
 // Connect to MongoDB
-connectDB();
+connectDB().then(() => {
+  // Warm up database after connection
+  warmupDatabase();
+  
+  // Start keep-alive service in production
+  if (process.env.NODE_ENV === 'production') {
+    startKeepAlive();
+  }
+});
 
 const app = express();
 
@@ -23,6 +33,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+app.use(compression()); // Compress all responses
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

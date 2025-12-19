@@ -1,6 +1,54 @@
 import Incident from '../models/Incident.model.js';
+import User from '../models/User.model.js';
 import cloudinary from '../config/cloudinary.js';
 import { sendEmergencyAlert } from '../services/email.service.js';
+
+// Helper function to calculate distance between two coordinates (Haversine formula)
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 6371; // Earth's radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c; // Distance in km
+};
+
+// Find nearby available responders
+const findNearbyResponders = async (lat, lng, radiusKm = 50) => {
+  try {
+    // Get all available responders with coordinates
+    const responders = await User.find({
+      role: { $in: ['responder', 'admin'] },
+      responderStatus: 'available',
+      'coordinates.lat': { $ne: null },
+      'coordinates.lng': { $ne: null },
+      email: { $exists: true, $ne: '' }
+    }).select('name email responderType coordinates');
+
+    if (responders.length === 0) {
+      console.log('⚠️  No responders found with coordinates');
+      return [];
+    }
+
+    // Calculate distance and filter by radius
+    const nearbyResponders = responders
+      .map(responder => ({
+        ...responder.toObject(),
+        distance: calculateDistance(lat, lng, responder.coordinates.lat, responder.coordinates.lng)
+      }))
+      .filter(responder => responder.distance <= radiusKm)
+      .sort((a, b) => a.distance - b.distance);
+
+    console.log(`📍 Found ${nearbyResponders.length} responders within ${radiusKm}km`);
+    return nearbyResponders;
+  } catch (error) {
+    console.error('Error finding nearby responders:', error);
+    return [];
+  }
+};
 
 // @desc    Create new incident report
 // @route   POST /api/incidents
@@ -104,16 +152,38 @@ export const createIncident = async (req, res) => {
       status: 'pending'
     });
 
-    // Send emergency alert email
+    // Find nearby responders and send emergency alert emails
     try {
+      // Find responders within 50km radius
+      const nearbyResponders = await findNearbyResponders(
+        parsedCoordinates.lat, 
+        parsedCoordinates.lng, 
+        50
+      );
+
+      // Extract responder emails
+      const responderEmails = nearbyResponders.map(r => r.email);
+      
+      if (responderEmails.length > 0) {
+        console.log(`📧 Sending alerts to ${responderEmails.length} nearby responder(s)`);
+      } else {
+        console.log('⚠️  No nearby responders found, sending to default emergency email');
+      }
+
       await sendEmergencyAlert({
         reportId,
         name,
         contact,
         location,
+        coordinates: parsedCoordinates,
         description,
-        severity: severity || 'medium'
+        severity: severity || 'medium',
+        vehicleNo: vehicleNo || '',
+        witnessInfo: witnessInfo || '',
+        images: uploadedImages,
+        responderEmails
       });
+      
       console.log('✅ Emergency alert email sent successfully');
     } catch (emailError) {
       console.error('⚠️  Email sending failed:', emailError.message);
@@ -143,12 +213,18 @@ export const getIncidents = async (req, res) => {
     if (status) query.status = status;
     if (severity) query.severity = severity;
 
+    // Use lean() for faster queries (returns plain JS objects instead of Mongoose documents)
     const incidents = await Incident.find(query)
       .populate('user', 'name email')
       .populate('responderAssigned', 'name email contact')
       .sort({ createdAt: -1 })
-      .limit(parseInt(limit));
+      .limit(parseInt(limit))
+      .lean()
+      .exec();
 
+    // Set cache headers (5 seconds for active data)
+    res.set('Cache-Control', 'public, max-age=5');
+    
     res.json({
       success: true,
       count: incidents.length,
@@ -169,7 +245,12 @@ export const getMyIncidents = async (req, res) => {
 
     const incidents = await Incident.find({ user: userId })
       .populate('responderAssigned', 'name email contact role responderType')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec();
+
+    // Cache user's own reports for 10 seconds
+    res.set('Cache-Control', 'private, max-age=10');
 
     res.json({
       success: true,

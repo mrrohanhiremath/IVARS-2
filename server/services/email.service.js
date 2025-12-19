@@ -11,9 +11,47 @@ console.log('📧 SendGrid Config:', {
   from: process.env.SENDGRID_FROM_EMAIL
 });
 
-export const sendEmergencyAlert = async ({ reportId, name, contact, location, description, severity }) => {
+export const sendEmergencyAlert = async ({ 
+  reportId, 
+  name, 
+  contact, 
+  location, 
+  coordinates,
+  description, 
+  severity, 
+  vehicleNo,
+  witnessInfo,
+  images = [],
+  responderEmails = [] 
+}) => {
+  // If no responder emails provided, send to default emergency email
+  const recipients = responderEmails.length > 0 ? responderEmails : [process.env.SENDGRID_FROM_EMAIL];
+  
+  // Generate Google Maps link
+  const mapsLink = coordinates ? 
+    `https://www.google.com/maps?q=${coordinates.lat},${coordinates.lng}` : 
+    `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`;
+
+  // Generate images HTML
+  const imagesHTML = images.length > 0 ? `
+    <div class="section">
+      <div class="section-title">Incident Photos</div>
+      <div class="images-grid">
+        ${images.map(img => `
+          <div class="image-wrapper">
+            <img src="${img.url}" alt="Incident photo" class="incident-image" />
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  ` : '';
+
+  // Generate witness info HTML - removed as it's inline now
+  
+  // Generate vehicle info HTML - removed as it's inline now
+  
   const msg = {
-    to: process.env.SENDGRID_FROM_EMAIL, // Send to emergency response team
+    to: recipients,
     from: {
       email: process.env.SENDGRID_FROM_EMAIL,
       name: process.env.SENDGRID_FROM_NAME
@@ -23,61 +61,271 @@ export const sendEmergencyAlert = async ({ reportId, name, contact, location, de
       <!DOCTYPE html>
       <html>
         <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: #dc2626; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
-            .content { background: #f9fafb; padding: 20px; border: 1px solid #e5e7eb; }
-            .field { margin-bottom: 15px; }
-            .label { font-weight: bold; color: #374151; }
-            .value { color: #1f2937; }
-            .severity { display: inline-block; padding: 5px 15px; border-radius: 5px; font-weight: bold; color: white; }
-            .severity-critical { background: #dc2626; }
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { 
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+              line-height: 1.6; 
+              color: #333;
+              background: #f5f5f5;
+              padding: 20px;
+            }
+            .email-container { 
+              max-width: 650px; 
+              margin: 0 auto; 
+              background: white;
+              border: 1px solid #e0e0e0;
+            }
+            .header { 
+              background: #dc2626;
+              color: white; 
+              padding: 30px;
+              border-bottom: 4px solid #991b1b;
+            }
+            .header h1 { 
+              font-size: 24px; 
+              font-weight: 700;
+              margin-bottom: 8px;
+            }
+            .header .subtitle {
+              font-size: 14px;
+              opacity: 0.95;
+            }
+            .alert-badge {
+              display: inline-block;
+              padding: 8px 16px;
+              margin-top: 15px;
+              font-weight: 700;
+              font-size: 14px;
+              letter-spacing: 0.5px;
+              color: white;
+            }
+            .severity-critical { background: #7f1d1d; }
             .severity-high { background: #ea580c; }
             .severity-medium { background: #f59e0b; }
-            .severity-low { background: #10b981; }
-            .footer { background: #f3f4f6; padding: 15px; text-align: center; font-size: 12px; color: #6b7280; }
+            .severity-low { background: #059669; }
+            .content { 
+              padding: 30px;
+            }
+            .section {
+              margin-bottom: 30px;
+            }
+            .section-title {
+              font-size: 16px;
+              font-weight: 700;
+              color: #111;
+              margin-bottom: 15px;
+              padding-bottom: 8px;
+              border-bottom: 2px solid #e5e7eb;
+            }
+            .info-row {
+              padding: 12px 0;
+              border-bottom: 1px solid #f0f0f0;
+            }
+            .info-row:last-child {
+              border-bottom: none;
+            }
+            .info-label {
+              font-size: 12px;
+              font-weight: 600;
+              color: #666;
+              text-transform: uppercase;
+              margin-bottom: 4px;
+            }
+            .info-value {
+              font-size: 15px;
+              color: #111;
+              word-break: break-word;
+            }
+            .description-box {
+              background: #fffbeb;
+              border-left: 4px solid #f59e0b;
+              padding: 20px;
+              margin: 15px 0;
+            }
+            .description-text {
+              font-size: 14px;
+              line-height: 1.7;
+              color: #333;
+            }
+            .images-grid {
+              display: grid;
+              grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+              gap: 15px;
+              margin-top: 15px;
+            }
+            .image-wrapper {
+              border: 1px solid #e0e0e0;
+            }
+            .incident-image {
+              width: 100%;
+              height: 200px;
+              object-fit: cover;
+              display: block;
+            }
+            .map-section {
+              background: #f0f9ff;
+              border: 1px solid #bfdbfe;
+              padding: 20px;
+              text-align: center;
+              margin-top: 15px;
+            }
+            .map-button {
+              display: inline-block;
+              background: #2563eb;
+              color: white;
+              padding: 12px 24px;
+              text-decoration: none;
+              font-weight: 600;
+              font-size: 14px;
+              margin-top: 10px;
+            }
+            .map-button:hover {
+              background: #1d4ed8;
+            }
+            .cta-section {
+              background: #fef2f2;
+              border: 2px solid #fecaca;
+              padding: 20px;
+              text-align: center;
+              margin-top: 30px;
+            }
+            .cta-title {
+              font-size: 16px;
+              font-weight: 700;
+              color: #991b1b;
+              margin-bottom: 8px;
+            }
+            .cta-text {
+              color: #7f1d1d;
+              font-size: 14px;
+            }
+            .footer { 
+              background: #f9fafb;
+              border-top: 1px solid #e5e7eb;
+              padding: 20px 30px;
+              text-align: center;
+            }
+            .footer-title {
+              font-size: 14px;
+              font-weight: 600;
+              margin-bottom: 8px;
+              color: #333;
+            }
+            .footer-text {
+              font-size: 12px;
+              color: #666;
+              line-height: 1.6;
+            }
+            @media only screen and (max-width: 600px) {
+              body { padding: 0; }
+              .content { padding: 20px; }
+              .header { padding: 20px; }
+              .images-grid { grid-template-columns: 1fr; }
+            }
           </style>
         </head>
         <body>
-          <div class="container">
+          <div class="email-container">
             <div class="header">
-              <h1>🚨 EMERGENCY INCIDENT REPORTED</h1>
-              <p>Immediate Action Required</p>
+              <h1>🚨 Emergency Alert</h1>
+              <p class="subtitle">Immediate Response Required</p>
+              <div class="alert-badge severity-${severity}">
+                ${severity.toUpperCase()} PRIORITY
+              </div>
             </div>
+            
             <div class="content">
-              <div class="field">
-                <span class="label">Report ID:</span>
-                <span class="value">${reportId}</span>
+              <!-- Report ID Section -->
+              <div class="section">
+                <div class="section-title">Report Details</div>
+                <div class="info-row">
+                  <div class="info-label">Report ID</div>
+                  <div class="info-value">${reportId}</div>
+                </div>
+                <div class="info-row">
+                  <div class="info-label">Reported At</div>
+                  <div class="info-value">${new Date().toLocaleString('en-US', { 
+                    dateStyle: 'full',
+                    timeStyle: 'short'
+                  })}</div>
+                </div>
               </div>
-              <div class="field">
-                <span class="label">Severity:</span>
-                <span class="severity severity-${severity}">${severity.toUpperCase()}</span>
+
+              <!-- Reporter Information -->
+              <div class="section">
+                <div class="section-title">Reporter Information</div>
+                <div class="info-row">
+                  <div class="info-label">Name</div>
+                  <div class="info-value">${name}</div>
+                </div>
+                <div class="info-row">
+                  <div class="info-label">Contact Number</div>
+                  <div class="info-value">${contact}</div>
+                </div>
+                ${vehicleNo ? `
+                <div class="info-row">
+                  <div class="info-label">Vehicle Number</div>
+                  <div class="info-value">${vehicleNo}</div>
+                </div>
+                ` : ''}
               </div>
-              <div class="field">
-                <span class="label">Reporter Name:</span>
-                <span class="value">${name}</span>
+
+              <!-- Location Information -->
+              <div class="section">
+                <div class="section-title">Location Details</div>
+                <div class="info-row">
+                  <div class="info-label">Location</div>
+                  <div class="info-value">${location}</div>
+                </div>
+                ${coordinates ? `
+                <div class="info-row">
+                  <div class="info-label">Coordinates</div>
+                  <div class="info-value">${coordinates.lat.toFixed(6)}, ${coordinates.lng.toFixed(6)}</div>
+                </div>
+                ` : ''}
+                <div class="map-section">
+                  <div style="font-size: 14px; color: #334155; margin-bottom: 10px; font-weight: 600;">View Incident Location</div>
+                  <a href="${mapsLink}" class="map-button" target="_blank">Open in Google Maps</a>
+                </div>
               </div>
-              <div class="field">
-                <span class="label">Contact:</span>
-                <span class="value">${contact}</span>
+
+              <!-- Description -->
+              <div class="section">
+                <div class="section-title">Incident Description</div>
+                <div class="description-box">
+                  <div class="description-text">${description}</div>
+                </div>
               </div>
-              <div class="field">
-                <span class="label">Location:</span>
-                <span class="value">${location}</span>
+
+              <!-- Witness Information -->
+              ${witnessInfo ? `
+              <div class="section">
+                <div class="section-title">Witness Information</div>
+                <div class="info-row">
+                  <div class="info-value">${witnessInfo}</div>
+                </div>
               </div>
-              <div class="field">
-                <span class="label">Description:</span>
-                <p class="value">${description}</p>
-              </div>
-              <div class="field">
-                <span class="label">Time Reported:</span>
-                <span class="value">${new Date().toLocaleString()}</span>
+              ` : ''}
+
+              <!-- Images -->
+              ${imagesHTML}
+
+              <!-- Call to Action -->
+              <div class="cta-section">
+                <div class="cta-title">⚡ Immediate Action Required</div>
+                <p class="cta-text">This is a ${severity} priority incident. Please respond immediately and update the incident status.</p>
               </div>
             </div>
+            
             <div class="footer">
-              <p>This is an automated emergency alert from Emergency Alert System</p>
-              <p>Please respond immediately to this incident</p>
+              <div class="footer-title">Emergency Alert System</div>
+              <p class="footer-text">
+                This is an automated emergency notification.<br>
+                You received this because you are a registered emergency responder in the area.
+              </p>
             </div>
           </div>
         </body>
@@ -87,8 +335,8 @@ export const sendEmergencyAlert = async ({ reportId, name, contact, location, de
 
   try {
     await sgMail.send(msg);
-    console.log('✅ Emergency alert email sent successfully');
-    return { success: true };
+    console.log(`✅ Emergency alert email sent successfully to ${recipients.length} responder(s)`);
+    return { success: true, recipients: recipients.length };
   } catch (error) {
     console.error('❌ Error sending email:', error);
     throw error;

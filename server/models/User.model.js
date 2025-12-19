@@ -46,10 +46,23 @@ const userSchema = new mongoose.Schema({
   location: {
     type: String,
     default: ''
+  },
+  coordinates: {
+    lat: {
+      type: Number,
+      default: null
+    },
+    lng: {
+      type: Number,
+      default: null
+    }
   }
 }, {
   timestamps: true
 });
+
+// Index for geospatial queries on responders
+userSchema.index({ 'coordinates.lat': 1, 'coordinates.lng': 1 });
 
 // Hash password before saving
 userSchema.pre('save', async function(next) {
