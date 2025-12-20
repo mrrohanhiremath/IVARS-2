@@ -27,25 +27,62 @@ export const sendEmergencyAlert = async ({
   // If no responder emails provided, send to default emergency email
   const recipients = responderEmails.length > 0 ? responderEmails : [process.env.SENDGRID_FROM_EMAIL];
   
+  console.log('📧 Preparing email with images:', images.map(img => img.url));
+  
   // Generate Google Maps link
   const mapsLink = coordinates ? 
     `https://www.google.com/maps?q=${coordinates.lat},${coordinates.lng}` : 
     `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`;
 
-  // Generate images HTML
+  // Optimize Cloudinary URLs for email delivery
+  const optimizedImages = images.map(img => {
+    // Add transformations to Cloudinary URL for better email compatibility
+    let optimizedUrl = img.url;
+    if (img.url && img.url.includes('cloudinary.com') && img.url.includes('/upload/')) {
+      // Insert transformations after /upload/ - format: f_jpg (force JPEG), q_80 (quality), w_600 (width)
+      optimizedUrl = img.url.replace('/upload/', '/upload/f_jpg,q_80,w_600/');
+    }
+    console.log('🖼️  Original URL:', img.url);
+    console.log('🖼️  Optimized URL:', optimizedUrl);
+    return { ...img, url: optimizedUrl };
+  });
+
+  // Generate images HTML with direct, non-blocked URLs
   const imagesHTML = images.length > 0 ? `
     <div class="section">
       <div class="section-title">Incident Photos</div>
-      <div class="images-grid">
-        ${images.map(img => `
-          <div class="image-wrapper">
-            <img src="${img.url}" alt="Incident photo" class="incident-image" />
-          </div>
-        `).join('')}
-      </div>
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top: 15px;">
+        <tr>
+          ${images.map((img, index) => {
+            // Use direct Cloudinary URL without transformations for better compatibility
+            const directUrl = img.url;
+            return `
+            ${index > 0 && index % 2 === 0 ? '</tr><tr>' : ''}
+            <td width="50%" style="padding: 5px;" valign="top">
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+                <tr>
+                  <td style="padding: 0;">
+                    <a href="${directUrl}" target="_blank" style="display: block;">
+                      <img src="${directUrl}" 
+                           alt="" 
+                           width="280"
+                           style="width: 100%; max-width: 280px; height: auto; display: block; border: 0;" />
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          `;
+          }).join('')}
+          ${images.length % 2 !== 0 ? '<td width="50%" style="padding: 5px;"></td>' : ''}
+        </tr>
+      </table>
+      <p style="font-size: 11px; color: #666; margin-top: 12px; text-align: center; line-height: 1.5;">
+        📷 ${images.length} photo(s) • <a href="${images[0]?.url}" target="_blank" style="color: #2563eb; text-decoration: underline; font-weight: 500;">Click here to view images</a> if not displayed
+      </p>
     </div>
   ` : '';
-
+  
   // Generate witness info HTML - removed as it's inline now
   
   // Generate vehicle info HTML - removed as it's inline now
@@ -158,12 +195,17 @@ export const sendEmergencyAlert = async ({
             }
             .image-wrapper {
               border: 1px solid #e0e0e0;
+              border-radius: 4px;
+              overflow: hidden;
+              background: #f9fafb;
             }
             .incident-image {
               width: 100%;
               height: 200px;
               object-fit: cover;
               display: block;
+              border: none;
+              max-width: 100%;
             }
             .map-section {
               background: #f0f9ff;

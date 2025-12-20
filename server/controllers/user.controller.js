@@ -35,6 +35,15 @@ export const updateProfile = async (req, res) => {
     user.contact = contact || user.contact;
     user.location = location || user.location;
     
+    // Parse coordinates from location string if provided (format: "lat,lng")
+    if (location && location.includes(',')) {
+      const [lat, lng] = location.split(',').map(coord => parseFloat(coord.trim()));
+      if (!isNaN(lat) && !isNaN(lng)) {
+        user.coordinates = { lat, lng };
+        console.log(`📍 Updated coordinates for ${user.name}: [${lat}, ${lng}]`);
+      }
+    }
+    
     if (user.role === 'responder') {
       if (responderStatus) {
         user.responderStatus = responderStatus;

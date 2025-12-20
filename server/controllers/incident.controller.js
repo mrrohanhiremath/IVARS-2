@@ -19,6 +19,8 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
 // Find nearby available responders
 const findNearbyResponders = async (lat, lng, radiusKm = 50) => {
   try {
+    console.log(`🔍 Searching for responders near [${lat}, ${lng}] within ${radiusKm}km...`);
+    
     // Get all available responders with coordinates
     const responders = await User.find({
       role: { $in: ['responder', 'admin'] },
@@ -28,6 +30,15 @@ const findNearbyResponders = async (lat, lng, radiusKm = 50) => {
       email: { $exists: true, $ne: '' }
     }).select('name email responderType coordinates');
 
+    console.log(`👥 Total responders found in DB: ${responders.length}`);
+    
+    if (responders.length > 0) {
+      console.log('📋 Responder details:');
+      responders.forEach(r => {
+        console.log(`   - ${r.name} (${r.email}): [${r.coordinates?.lat}, ${r.coordinates?.lng}]`);
+      });
+    }
+
     if (responders.length === 0) {
       console.log('⚠️  No responders found with coordinates');
       return [];
@@ -35,14 +46,22 @@ const findNearbyResponders = async (lat, lng, radiusKm = 50) => {
 
     // Calculate distance and filter by radius
     const nearbyResponders = responders
-      .map(responder => ({
-        ...responder.toObject(),
-        distance: calculateDistance(lat, lng, responder.coordinates.lat, responder.coordinates.lng)
-      }))
+      .map(responder => {
+        const distance = calculateDistance(lat, lng, responder.coordinates.lat, responder.coordinates.lng);
+        console.log(`   📏 Distance to ${responder.name}: ${distance.toFixed(2)}km`);
+        return {
+          ...responder.toObject(),
+          distance
+        };
+      })
       .filter(responder => responder.distance <= radiusKm)
       .sort((a, b) => a.distance - b.distance);
 
     console.log(`📍 Found ${nearbyResponders.length} responders within ${radiusKm}km`);
+    if (nearbyResponders.length > 0) {
+      console.log('✅ Nearby responders:', nearbyResponders.map(r => `${r.name} (${r.distance.toFixed(2)}km)`).join(', '));
+    }
+    
     return nearbyResponders;
   } catch (error) {
     console.error('Error finding nearby responders:', error);
@@ -163,6 +182,8 @@ export const createIncident = async (req, res) => {
 
       // Extract responder emails
       const responderEmails = nearbyResponders.map(r => r.email);
+      
+      console.log(`📧 Responder emails to notify: ${responderEmails.length > 0 ? responderEmails.join(', ') : 'NONE'}`);
       
       if (responderEmails.length > 0) {
         console.log(`📧 Sending alerts to ${responderEmails.length} nearby responder(s)`);

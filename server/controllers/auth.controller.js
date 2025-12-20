@@ -32,6 +32,15 @@ export const register = async (req, res) => {
       userData.responderType = responderType || 'ambulance';
       userData.responderStatus = responderStatus || 'available';
       userData.location = location || '';
+      
+      // Parse coordinates from location string if provided (format: "lat,lng")
+      if (location && location.includes(',')) {
+        const [lat, lng] = location.split(',').map(coord => parseFloat(coord.trim()));
+        if (!isNaN(lat) && !isNaN(lng)) {
+          userData.coordinates = { lat, lng };
+          console.log(`📍 Parsed coordinates for ${name}: [${lat}, ${lng}]`);
+        }
+      }
     }
 
     // Create user
