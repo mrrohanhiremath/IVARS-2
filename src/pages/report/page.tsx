@@ -27,6 +27,19 @@ export default function ReportAccident() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+    
+    // Phone number validation: only allow digits and max 10 characters
+    if (name === 'contact') {
+      const digitsOnly = value.replace(/\D/g, '');
+      if (digitsOnly.length <= 10) {
+        setFormData(prev => ({
+          ...prev,
+          [name]: digitsOnly
+        }));
+      }
+      return;
+    }
+    
     setFormData(prev => ({
       ...prev,
       [name]: value
@@ -246,7 +259,9 @@ export default function ReportAccident() {
                     onChange={handleInputChange}
                     required
                     icon="ri-phone-line"
-                    placeholder="Enter your phone number"
+                    placeholder="Enter 10 digit phone number"
+                    maxLength={10}
+                    minLength={10}
                   />
                 </div>
 
@@ -256,7 +271,7 @@ export default function ReportAccident() {
                   value={formData.vehicleNo}
                   onChange={handleInputChange}
                   icon="ri-car-line"
-                  placeholder="Enter vehicle license plate"
+                  placeholder="e.g., KA-01-AB-1234"
                 />
 
                 <div>

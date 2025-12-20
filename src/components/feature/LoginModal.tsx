@@ -20,9 +20,36 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
     responderType: ''
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+
+  const validatePassword = (password: string): string => {
+    if (password.length < 8) {
+      return 'Password must be at least 8 characters long';
+    }
+    if (!/[A-Z]/.test(password)) {
+      return 'Password must contain at least one uppercase letter';
+    }
+    if (!/[a-z]/.test(password)) {
+      return 'Password must contain at least one lowercase letter';
+    }
+    if (!/[0-9]/.test(password)) {
+      return 'Password must contain at least one number';
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+      return 'Password must contain at least one special character (!@#$%^&*(),.?":{}|<>)';
+    }
+    return '';
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
+    
+    // Validate password in real-time during signup
+    if (name === 'password' && !isLogin) {
+      const error = validatePassword(value);
+      setPasswordError(error);
+    }
+    
     setFormData(prev => ({
       ...prev,
       [name]: value
@@ -60,6 +87,17 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate password on signup
+    if (!isLogin) {
+      const error = validatePassword(formData.password);
+      if (error) {
+        setPasswordError(error);
+        alert(error);
+        return;
+      }
+    }
+    
     setIsLoading(true);
 
     try {
@@ -168,16 +206,30 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
               placeholder="Enter your email"
             />
 
-            <Input
-              label="Password *"
-              name="password"
-              type="password"
-              value={formData.password}
-              onChange={handleInputChange}
-              required
-              icon="ri-lock-line"
-              placeholder="Enter your password"
-            />
+            <div>
+              <Input
+                label="Password *"
+                name="password"
+                type="password"
+                value={formData.password}
+                onChange={handleInputChange}
+                required
+                icon="ri-lock-line"
+                placeholder={isLogin ? "Enter your password" : "Min 8 chars, A-z, 0-9, special char"}
+              />
+              {!isLogin && passwordError && (
+                <p className="mt-1 text-xs text-red-600">
+                  <i className="ri-error-warning-line mr-1"></i>
+                  {passwordError}
+                </p>
+              )}
+              {!isLogin && !passwordError && formData.password && (
+                <p className="mt-1 text-xs text-green-600">
+                  <i className="ri-checkbox-circle-line mr-1"></i>
+                  Password meets all requirements
+                </p>
+              )}
+            </div>
 
             {!isLogin && (
               <>
@@ -197,7 +249,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                     >
                       <option value="citizen">Citizen</option>
                       <option value="responder">Emergency Responder</option>
-                      <option value="admin">Administrator</option>
+                      {/* <option value="admin">Administrator</option> */}
                     </select>
                   </div>
                 </div>
@@ -265,7 +317,6 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
               <div className="space-y-1">
                 <p><span className="font-medium">Citizen:</span> Report accidents, track status</p>
                 <p><span className="font-medium">Responder:</span> Receive alerts, update status</p>
-                <p><span className="font-medium">Admin:</span> Full system access, analytics</p>
               </div>
             </div>
           </div>

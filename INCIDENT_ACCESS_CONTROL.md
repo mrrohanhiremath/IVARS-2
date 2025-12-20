@@ -22,7 +22,7 @@ interface Incident {
 #### Enhanced Data Fetching
 - Modified `fetchIncidents()` to also capture the responder's ID alongside their name
 - Now stores both `responderAssigned` (name) and `responderAssignedId` (ID) for access control
-
+  
 #### Access Control for Resolve Button
 **Before:**
 - Any responder could see and click the Resolve button for any active incident

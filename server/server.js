@@ -22,10 +22,8 @@ connectDB()
     // Warm up database after connection
     await warmupDatabase();
     
-    // Start keep-alive service in production
-    if (process.env.NODE_ENV === 'production') {
-      startKeepAlive();
-    }
+    // Start keep-alive service to prevent server sleep
+    startKeepAlive();
   })
   .catch(err => {
     console.error('❌ MongoDB connection error:', err);

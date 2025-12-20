@@ -4,19 +4,32 @@ import mongoose from 'mongoose';
 // Keep server and database warm with periodic pings
 export const startKeepAlive = () => {
   const SERVER_URL = process.env.SERVER_URL || 'http://localhost:5000';
-  const PING_INTERVAL = 14 * 60 * 1000; // 14 minutes (free tier sleeps after 15 min)
+  const PING_INTERVAL = 10 * 60 * 1000; // 10 minutes - more aggressive to prevent sleep
 
   console.log('🔄 Keep-alive service started');
+  console.log('📍 Pinging:', SERVER_URL);
 
-  // Ping server every 14 minutes to prevent cold starts
-  setInterval(async () => {
+  // Initial ping
+  const ping = async () => {
     try {
-      await axios.get(`${SERVER_URL}/api/health`, { timeout: 5000 });
-      console.log('💚 Keep-alive ping successful');
+      const response = await axios.get(`${SERVER_URL}/api/health`, { timeout: 5000 });
+      console.log('💚 Keep-alive ping successful at', new Date().toLocaleTimeString());
+      
+      // Also ping database to keep MongoDB connection alive
+      if (mongoose.connection.readyState === 1) {
+        await mongoose.connection.db.admin().ping();
+        console.log('💚 Database ping successful');
+      }
     } catch (error) {
       console.log('⚠️ Keep-alive ping failed:', error.message);
     }
-  }, PING_INTERVAL);
+  };
+
+  // Ping immediately on startup
+  ping();
+
+  // Then ping every 10 minutes
+  setInterval(ping, PING_INTERVAL);
 };
 
 // Warm up database connections on startup
